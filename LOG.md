@@ -50,3 +50,8 @@ http://www.pygame.org/docs/ref/mask.html#pygame.mask.from_surface
 ## pygame.Rect
 
 http://www.pygame.org/docs/ref/rect.html#pygame.Rect
+
+
+## pygame.time.set_timer
+
+http://www.pygame.org/docs/ref/time.html#pygame.time.set_timer
