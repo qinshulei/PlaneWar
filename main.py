@@ -6,18 +6,28 @@ import sys
 from pygame.locals import *
 from random import *
 
+
 class MyPlane(pygame.sprite.Sprite):
     def __init__(self, bg_size):
         pygame.sprite.Sprite.__init__(self)
 
         self.image1 = pygame.image.load("images/me1.png").convert_alpha()
         self.image2 = pygame.image.load("images/me2.png").convert_alpha()
+        self.destroy_images = []
+        self.destroy_images.extend([\
+            pygame.image.load("images/me_destroy_1.png").convert_alpha(), \
+            pygame.image.load("images/me_destroy_2.png").convert_alpha(), \
+            pygame.image.load("images/me_destroy_3.png").convert_alpha(), \
+            pygame.image.load("images/me_destroy_4.png").convert_alpha() \
+            ])
         self.rect = self.image1.get_rect()
         self.width, self.height = bg_size[0], bg_size[1]
         self.rect.left, self.rect.top = \
                         (self.width - self.rect.width) // 2, \
-                        self.height - self.rect.height - 60    # 我机初始位置
+                        self.height - self.rect.height - 60
         self.speed = 10
+        self.active = True
+        self.mask = pygame.mask.from_surface(self.image1)
 
     def moveUp(self):
         if self.rect.top > 0:
@@ -49,12 +59,21 @@ class SmallEnemy(pygame.sprite.Sprite):
         pygame.sprite.Sprite.__init__(self)
 
         self.image = pygame.image.load("images/enemy1.png").convert_alpha()
+        self.destroy_images = []
+        self.destroy_images.extend([\
+            pygame.image.load("images/enemy1_down1.png").convert_alpha(), \
+            pygame.image.load("images/enemy1_down2.png").convert_alpha(), \
+            pygame.image.load("images/enemy1_down3.png").convert_alpha(), \
+            pygame.image.load("images/enemy1_down4.png").convert_alpha() \
+            ])
         self.rect = self.image.get_rect()
         self.width, self.height = bg_size[0], bg_size[1]
         self.speed = 2
+        self.active = True
         self.rect.left, self.rect.top = \
                         randint(0, self.width - self.rect.width), \
                         randint(-5 * self.height, 0)
+        self.mask = pygame.mask.from_surface(self.image)
 
     def move(self):
         if self.rect.top < self.height:
@@ -63,22 +82,37 @@ class SmallEnemy(pygame.sprite.Sprite):
             self.reset()
 
     def reset(self):
+        self.active = True
         self.rect.left, self.rect.top = \
                         randint(0, self.width - self.rect.width), \
                         randint(-5 * self.height, 0)
 
 
 class MidEnemy(pygame.sprite.Sprite):
+    energy = 8
+
     def __init__(self, bg_size):
         pygame.sprite.Sprite.__init__(self)
 
         self.image = pygame.image.load("images/enemy2.png").convert_alpha()
+        self.image_hit = pygame.image.load("images/enemy2_hit.png").convert_alpha()
+        self.destroy_images = []
+        self.destroy_images.extend([\
+            pygame.image.load("images/enemy2_down1.png").convert_alpha(), \
+            pygame.image.load("images/enemy2_down2.png").convert_alpha(), \
+            pygame.image.load("images/enemy2_down3.png").convert_alpha(), \
+            pygame.image.load("images/enemy2_down4.png").convert_alpha() \
+            ])
         self.rect = self.image.get_rect()
         self.width, self.height = bg_size[0], bg_size[1]
         self.speed = 1
+        self.active = True
         self.rect.left, self.rect.top = \
                         randint(0, self.width - self.rect.width), \
                         randint(-10 * self.height, -self.height)
+        self.mask = pygame.mask.from_surface(self.image)
+        self.energy = MidEnemy.energy
+        self.hit = False
 
     def move(self):
         if self.rect.top < self.height:
@@ -87,23 +121,41 @@ class MidEnemy(pygame.sprite.Sprite):
             self.reset()
 
     def reset(self):
+        self.active = True
+        self.energy = MidEnemy.energy
         self.rect.left, self.rect.top = \
                         randint(0, self.width - self.rect.width), \
                         randint(-10 * self.height, -self.height)
 
 
 class BigEnemy(pygame.sprite.Sprite):
+    energy = 20
+
     def __init__(self, bg_size):
         pygame.sprite.Sprite.__init__(self)
 
         self.image1 = pygame.image.load("images/enemy3_n1.png").convert_alpha()
         self.image2 = pygame.image.load("images/enemy3_n2.png").convert_alpha()
+        self.image_hit = pygame.image.load("images/enemy3_hit.png").convert_alpha()
+        self.destroy_images = []
+        self.destroy_images.extend([\
+            pygame.image.load("images/enemy3_down1.png").convert_alpha(), \
+            pygame.image.load("images/enemy3_down2.png").convert_alpha(), \
+            pygame.image.load("images/enemy3_down3.png").convert_alpha(), \
+            pygame.image.load("images/enemy3_down4.png").convert_alpha(), \
+            pygame.image.load("images/enemy3_down5.png").convert_alpha(), \
+            pygame.image.load("images/enemy3_down6.png").convert_alpha() \
+            ])
         self.rect = self.image1.get_rect()
         self.width, self.height = bg_size[0], bg_size[1]
         self.speed = 1
+        self.active = True
         self.rect.left, self.rect.top = \
                         randint(0, self.width - self.rect.width), \
                         randint(-15 * self.height, -5 * self.height)
+        self.mask = pygame.mask.from_surface(self.image1)
+        self.energy = BigEnemy.energy
+        self.hit = False
 
     def move(self):
         if self.rect.top < self.height:
@@ -112,10 +164,33 @@ class BigEnemy(pygame.sprite.Sprite):
             self.reset()
 
     def reset(self):
+        self.active = True
+        self.energy = BigEnemy.energy
         self.rect.left, self.rect.top = \
                         randint(0, self.width - self.rect.width), \
                         randint(-15 * self.height, -5 * self.height)
 
+
+class Bullet1(pygame.sprite.Sprite):
+    def __init__(self, position):
+        pygame.sprite.Sprite.__init__(self)
+
+        self.image = pygame.image.load("images/bullet1.png").convert_alpha()
+        self.rect = self.image.get_rect()
+        self.rect.left, self.rect.top = position
+        self.speed = 12
+        self.active = True
+        self.mask = pygame.mask.from_surface(self.image)
+
+    def move(self):
+        self.rect.top -= self.speed
+
+        if self.rect.top < 0:
+            self.active = False
+
+    def reset(self, position):
+        self.rect.left, self.rect.top = position
+        self.active = True
 
 pygame.init()
 pygame.mixer.init()
@@ -125,6 +200,10 @@ screen = pygame.display.set_mode(bg_size)
 pygame.display.set_caption("飞机大战")
 
 background = pygame.image.load("images/background.png").convert()
+
+BLACK = (0, 0, 0)
+GREEN = (0, 255, 0)
+RED = (255, 0, 0)
 
 # 载入游戏音乐
 pygame.mixer.music.load("sound/game_music.ogg")
@@ -144,7 +223,7 @@ upgrade_sound.set_volume(0.2)
 enemy3_fly_sound = pygame.mixer.Sound("sound/enemy3_flying.wav")
 enemy3_fly_sound.set_volume(0.2)
 enemy1_down_sound = pygame.mixer.Sound("sound/enemy1_down.wav")
-enemy1_down_sound.set_volume(0.1)
+enemy1_down_sound.set_volume(0.2)
 enemy2_down_sound = pygame.mixer.Sound("sound/enemy2_down.wav")
 enemy2_down_sound.set_volume(0.2)
 enemy3_down_sound = pygame.mixer.Sound("sound/enemy3_down.wav")
@@ -192,7 +271,20 @@ def main():
     big_enemies = pygame.sprite.Group()
     add_big_enemies(big_enemies, enemies, 2)
 
+    # 生成普通子弹
+    bullet1 = []
+    bullet1_index = 0
+    BULLET1_NUM = 4
+    for i in range(BULLET1_NUM):
+        bullet1.append(Bullet1(me.rect.midtop))
+
     clock = pygame.time.Clock()
+
+    # 中弹图片索引
+    e1_destroy_index = 0
+    e2_destroy_index = 0
+    e3_destroy_index = 0
+    me_destroy_index = 0
 
     # 用于切换图片
     switch_image = True
@@ -222,32 +314,145 @@ def main():
 
         screen.blit(background, (0, 0))
 
+        # 发射子弹
+        if not(delay % 10):
+            bullet1[bullet1_index].reset(me.rect.midtop)
+            bullet1_index = (bullet1_index + 1) % BULLET1_NUM
+
+        # 检测子弹是否击中敌机
+        for b in bullet1:
+            if b.active:
+                b.move()
+                screen.blit(b.image, b.rect)
+                enemy_hit = pygame.sprite.spritecollide(b, enemies, False, pygame.sprite.collide_mask)
+                if enemy_hit:
+                    b.active = False
+                    for e in enemy_hit:
+                        if e in mid_enemies or e in big_enemies:
+                            e.hit = True
+                            e.energy -= 1
+                            if e.energy == 0:
+                                e.active = False
+                        else:
+                            e.active = False
+
         # 绘制大型敌机
         for each in big_enemies:
-            each.move()
-            if switch_image:
-                screen.blit(each.image1, each.rect)
+            if each.active:
+                each.move()
+                if each.hit:
+                    screen.blit(each.image_hit, each.rect)
+                    each.hit = False
+                else:
+                    if switch_image:
+                        screen.blit(each.image1, each.rect)
+                    else:
+                        screen.blit(each.image2, each.rect)
+
+                # 绘制血槽
+                pygame.draw.line(screen, BLACK, \
+                                 (each.rect.left, each.rect.top - 5), \
+                                 (each.rect.right, each.rect.top - 5), \
+                                 2)
+                # 当生命大于20%显示绿色，否则显示红色
+                energy_remain = each.energy / BigEnemy.energy
+                if energy_remain > 0.2:
+                    energy_color = GREEN
+                else:
+                    energy_color = RED
+                pygame.draw.line(screen, energy_color, \
+                                 (each.rect.left, each.rect.top - 5), \
+                                 (each.rect.left + each.rect.width * energy_remain, \
+                                  each.rect.top - 5), 2)
+
+                # 即将出现在画面中，播放音效
+                if each.rect.bottom == -50:
+                    enemy3_fly_sound.play(-1) # -1代表循环播放音乐
             else:
-                screen.blit(each.image2, each.rect)
-            # 即将出现在画面中，播放音效
-            if each.rect.bottom > -50:
-                enemy3_fly_sound.play()
+                # 毁灭
+                if not(delay % 3):
+                    if e3_destroy_index == 0:
+                        enemy3_down_sound.play()
+                    screen.blit(each.destroy_images[e3_destroy_index], each.rect)
+                    e3_destroy_index = (e3_destroy_index + 1) % 6
+                    if e3_destroy_index == 0:
+                        enemy3_fly_sound.stop() # 被击中停止播放音效
+                        each.reset()
 
         # 绘制中型敌机：
         for each in mid_enemies:
-            each.move()
-            screen.blit(each.image, each.rect)
+            if each.active:
+                each.move()
+
+                if each.hit:
+                    screen.blit(each.image_hit, each.rect)
+                    each.hit = False
+                else:
+                    screen.blit(each.image, each.rect)
+
+                # 绘制血槽
+                pygame.draw.line(screen, BLACK, \
+                                 (each.rect.left, each.rect.top - 5), \
+                                 (each.rect.right, each.rect.top - 5), \
+                                 2)
+                # 当生命大于20%显示绿色，否则显示红色
+                energy_remain = each.energy / MidEnemy.energy
+                if energy_remain > 0.2:
+                    energy_color = GREEN
+                else:
+                    energy_color = RED
+                pygame.draw.line(screen, energy_color, \
+                                 (each.rect.left, each.rect.top - 5), \
+                                 (each.rect.left + each.rect.width * energy_remain, \
+                                  each.rect.top - 5), 2)
+            else:
+                # 毁灭
+                if not(delay % 3):
+                    if e2_destroy_index == 0:
+                        enemy2_down_sound.play()
+                    screen.blit(each.destroy_images[e2_destroy_index], each.rect)
+                    e2_destroy_index = (e2_destroy_index + 1) % 4
+                    if e2_destroy_index == 0:
+                        each.reset()
 
         # 绘制小型敌机：
         for each in small_enemies:
-            each.move()
-            screen.blit(each.image, each.rect)
+            if each.active:
+                each.move()
+                screen.blit(each.image, each.rect)
+            else:
+                # 毁灭
+                if not(delay % 3):
+                    if e1_destroy_index == 0:
+                        enemy1_down_sound.play()
+                    screen.blit(each.destroy_images[e1_destroy_index], each.rect)
+                    e1_destroy_index = (e1_destroy_index + 1) % 4
+                    if e1_destroy_index == 0:
+                        each.reset()
 
-        # 绘制我方飞机 通过切换图片实现发动机喷气效果
-        if switch_image:
-            screen.blit(me.image1, me.rect)
+        # 检测我方飞机是否被撞
+        enemies_down = pygame.sprite.spritecollide(me, enemies, False, pygame.sprite.collide_mask)
+        if enemies_down:
+            # me.active = False
+            for e in enemies_down:
+                e.active = False
+
+        # 绘制我方飞机
+        if me.active:
+            if switch_image:
+                screen.blit(me.image1, me.rect)
+            else:
+                screen.blit(me.image2, me.rect)
         else:
-            screen.blit(me.image2, me.rect)
+            # 毁灭
+            if not(delay % 3):
+                if me_destroy_index == 0:
+                    me_down_sound.play()
+                screen.blit(me.destroy_images[me_destroy_index], me.rect)
+                me_destroy_index = (me_destroy_index + 1) % 4
+                if me_destroy_index == 0:
+                    print("Game Over!")
+                    running = False
 
         # 切换图片
         if not(delay % 5):

@@ -43,4 +43,10 @@ http://www.pygame.org/docs/ref/surface.html#pygame.Surface.convert_alpha
 
 http://www.pygame.org/docs/ref/sprite.html#pygame.sprite.Group
 
+## pygame.mask.from_surface
 
+http://www.pygame.org/docs/ref/mask.html#pygame.mask.from_surface
+
+## pygame.Rect
+
+http://www.pygame.org/docs/ref/rect.html#pygame.Rect
