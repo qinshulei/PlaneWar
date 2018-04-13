@@ -2,7 +2,7 @@
 # main.py
 import pygame
 import sys
-
+import traceback
 from pygame.locals import *
 from random import *
 
@@ -179,7 +179,7 @@ class Bullet1(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.left, self.rect.top = position
         self.speed = 12
-        self.active = True
+        self.active = False
         self.mask = pygame.mask.from_surface(self.image)
 
     def move(self):
@@ -192,9 +192,75 @@ class Bullet1(pygame.sprite.Sprite):
         self.rect.left, self.rect.top = position
         self.active = True
 
+class Bullet2(pygame.sprite.Sprite): # 双排超级子弹
+    def __init__(self, position):
+        pygame.sprite.Sprite.__init__(self)
 
-from pygame.locals import *
-from random import *
+        self.image = pygame.image.load("images/bullet2.png").convert_alpha()
+        self.rect = self.image.get_rect()
+        self.rect.left, self.rect.top = position
+        self.speed = 14
+        self.active = False
+        self.mask = pygame.mask.from_surface(self.image)
+
+    def move(self):
+        self.rect.top -= self.speed
+
+        if self.rect.top < 0:
+            self.active = False
+
+    def reset(self, position):
+        self.rect.left, self.rect.top = position
+        self.active = True
+
+class Bullet_Supply(pygame.sprite.Sprite):
+    def __init__(self, bg_size):
+        pygame.sprite.Sprite.__init__(self)
+
+        self.image = pygame.image.load("images/bullet_supply.png").convert_alpha()
+        self.rect = self.image.get_rect()
+        self.width, self.height = bg_size[0], bg_size[1]
+        self.rect.left, self.rect.bottom = \
+                        randint(0, self.width - self.rect.width), -100
+        self.speed = 5
+        self.active = False
+        self.mask = pygame.mask.from_surface(self.image)
+
+    def move(self):
+        if self.rect.top < self.height:
+            self.rect.top += self.speed
+        else:
+            self.active = False
+
+    def reset(self):
+        self.active = True
+        self.rect.left, self.rect.bottom = \
+                        randint(0, self.width - self.rect.width), -100
+
+class Bomb_Supply(pygame.sprite.Sprite):
+    def __init__(self, bg_size):
+        pygame.sprite.Sprite.__init__(self)
+
+        self.image = pygame.image.load("images/bomb_supply.png").convert_alpha()
+        self.rect = self.image.get_rect()
+        self.width, self.height = bg_size[0], bg_size[1]
+        self.rect.left, self.rect.bottom = \
+                        randint(0, self.width - self.rect.width), -100
+        self.speed = 5
+        self.active = False
+        self.mask = pygame.mask.from_surface(self.image)
+
+    def move(self):
+        if self.rect.top < self.height:
+            self.rect.top += self.speed
+        else:
+            self.active = False
+
+    def reset(self):
+        self.active = True
+        self.rect.left, self.rect.bottom = \
+                        randint(0, self.width - self.rect.width), -100
+
 
 pygame.init()
 pygame.mixer.init()
@@ -286,6 +352,14 @@ def main():
     for i in range(BULLET1_NUM):
         bullet1.append(Bullet1(me.rect.midtop))
 
+    # 生成超级子弹
+    bullet2 = []
+    bullet2_index = 0
+    BULLET2_NUM = 8
+    for i in range(BULLET2_NUM//2):
+        bullet2.append(Bullet2((me.rect.centerx-33, me.rect.centery)))
+        bullet2.append(Bullet2((me.rect.centerx+30, me.rect.centery)))
+
     clock = pygame.time.Clock()
 
     # 中弹图片索引
@@ -317,6 +391,18 @@ def main():
     bomb_font = pygame.font.Font("font/font.ttf", 48)
     bomb_num = 3
 
+    # 每30秒发放一个补给包
+    bullet_supply = Bullet_Supply(bg_size)
+    bomb_supply = Bomb_Supply(bg_size)
+    SUPPLY_TIME = USEREVENT
+    pygame.time.set_timer(SUPPLY_TIME, 30 * 1000)
+
+    # 超级子弹定时器
+    DOUBLE_BULLET_TIME = USEREVENT + 1
+
+    # 标志是否使用超级子弹
+    is_double_bullet = False
+
     # 用于切换图片
     switch_image = True
 
@@ -334,6 +420,14 @@ def main():
             elif event.type == MOUSEBUTTONDOWN:
                 if event.button == 1 and paused_rect.collidepoint(event.pos):
                     paused = not paused
+                    if paused:
+                        pygame.time.set_timer(SUPPLY_TIME, 0)
+                        pygame.mixer.music.pause()
+                        pygame.mixer.pause()
+                    else:
+                        pygame.time.set_timer(SUPPLY_TIME, 30 * 1000)
+                        pygame.mixer.music.unpause()
+                        pygame.mixer.unpause()
 
             elif event.type == MOUSEMOTION:
                 if paused_rect.collidepoint(event.pos):
@@ -355,6 +449,17 @@ def main():
                         for each in enemies:
                             if each.rect.bottom > 0:
                                 each.active = False
+
+            elif event.type == SUPPLY_TIME:
+                supply_sound.play()
+                if choice([True, False]):
+                    bomb_supply.reset()
+                else:
+                    bullet_supply.reset()
+
+            elif event.type == DOUBLE_BULLET_TIME:
+                is_double_bullet = False
+                pygame.time.set_timer(DOUBLE_BULLET_TIME, 0)
 
 
         # 根据用户的得分增加难度
@@ -414,13 +519,42 @@ def main():
             if key_pressed[K_d] or key_pressed[K_RIGHT]:
                 me.moveRight()
 
+            # 绘制全屏炸弹补给并检测是否获得
+            if bomb_supply.active:
+                bomb_supply.move()
+                screen.blit(bomb_supply.image, bomb_supply.rect)
+                if pygame.sprite.collide_mask(bomb_supply, me):
+                    get_bomb_sound.play()
+                    if bomb_num < 3:
+                        bomb_num += 1
+                    bomb_supply.active = False
+
+            # 绘制超级子弹补给并检测是否获得
+            if bullet_supply.active:
+                bullet_supply.move()
+                screen.blit(bullet_supply.image, bullet_supply.rect)
+                if pygame.sprite.collide_mask(bullet_supply, me):
+                    get_bullet_sound.play()
+                    is_double_bullet = True
+                    pygame.time.set_timer(DOUBLE_BULLET_TIME, 18 * 1000)
+                    bullet_supply.active = False
+
             # 发射子弹
             if not(delay % 10):
-                bullet1[bullet1_index].reset(me.rect.midtop)
-                bullet1_index = (bullet1_index + 1) % BULLET1_NUM
+                bullet_sound.play()
+                if is_double_bullet:
+                    bullets = bullet2
+                    bullets[bullet2_index].reset((me.rect.centerx-33, me.rect.centery))
+                    bullets[bullet2_index+1].reset((me.rect.centerx+30, me.rect.centery))
+                    bullet2_index = (bullet2_index + 2) % BULLET2_NUM
+                else:
+                    bullets = bullet1
+                    bullets[bullet1_index].reset(me.rect.midtop)
+                    bullet1_index = (bullet1_index + 1) % BULLET1_NUM
+
 
             # 检测子弹是否击中敌机
-            for b in bullet1:
+            for b in bullets:
                 if b.active:
                     b.move()
                     screen.blit(b.image, b.rect)
@@ -558,7 +692,7 @@ def main():
                         running = False
 
             # 绘制全屏炸弹数量
-            bomb_text = bomb_font.render("x  %d" % bomb_num, True, WHITE)
+            bomb_text = bomb_font.render(" X %d" % bomb_num, True, WHITE)
             text_rect = bomb_text.get_rect()
             screen.blit(bomb_image, (10, height - 10 - bomb_rect.height))
             screen.blit(bomb_text, (20 + bomb_rect.width, height - 5 - text_rect.height))
@@ -587,4 +721,6 @@ if __name__ == "__main__":
     except SystemExit:
         pass
     except:
+        traceback.print_exc()
         pygame.quit()
+        input()
