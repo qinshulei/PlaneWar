@@ -30,3 +30,17 @@ http://www.pygame.org/docs/ref/surface.html#pygame.Surface.blit
 ## pygame tick
 
 http://www.pygame.org/docs/ref/time.html#pygame.time.Clock.tick
+
+## pygame.sprite.Sprite
+
+http://www.pygame.org/docs/ref/sprite.html
+
+## pygame.image convert_alpha
+
+http://www.pygame.org/docs/ref/surface.html#pygame.Surface.convert_alpha
+
+## pygame.sprite.Group
+
+http://www.pygame.org/docs/ref/sprite.html#pygame.sprite.Group
+
+
